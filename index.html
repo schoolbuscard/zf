@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Z-Flash Pattern Tester</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0d10;color:#e8eaed;font-family:-apple-system,Helvetica,Arial,sans-serif;overflow:hidden}
+  #scene{position:fixed;inset:0;touch-action:none}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(12,14,17,.88);backdrop-filter:blur(8px);border-top:1px solid #262b33}
+  #topbar{position:fixed;top:0;left:0;right:0;padding:10px 12px;background:linear-gradient(rgba(12,14,17,.9),transparent);pointer-events:none}
+  #title{font-size:15px;font-weight:700}
+  #sub{font-size:11px;color:#9aa3ad;margin-top:2px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  button,select,.upl{font-size:15px;padding:10px 14px;border-radius:10px;border:1px solid #39414c;background:#1b2027;color:#e8eaed;min-height:44px}
+  button:active{background:#262d36}
+  #play{min-width:92px;font-weight:700;background:#2f6fed;border-color:#2f6fed}
+  #pname{font-size:13px;color:#9aa3ad;margin:6px 2px 0;min-height:16px}
+  #stepinfo{font-size:12px;color:#7d8894;margin-left:auto;align-self:center}
+  #warn{font-size:11px;color:#e0a93e;margin-top:6px;display:none}
+  #drop{position:fixed;inset:14px;border:2px dashed #2f6fed;border-radius:14px;display:none;align-items:center;justify-content:center;font-size:17px;background:rgba(20,30,50,.75);z-index:5;text-align:center;padding:20px}
+  #credit{font-size:10px;color:#59626d;margin-top:3px}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div id="topbar"><div id="title">Z-Flash Pattern Tester</div><div id="sub">Drag to rotate &middot; pinch to zoom</div><div id="credit">Model: 'Dodge Durango SRT 392' by fvrenbld / Sketchfab, CC-BY 4.0 (blackout + lamp edit) &middot; Z-Flash is a product of Ultra Bright Lightz</div></div>
+<div id="ui">
+  <div class="row">
+    <button id="play">Pause</button>
+    <select id="speed">
+      <option value="120">Slow</option>
+      <option value="70">Medium</option>
+      <option value="35" selected>Fast</option>
+      <option value="18">Ludicrous</option>
+    </select>
+    <label class="upl">Upload .cls<input id="file" type="file" accept=".cls,.txt" style="display:none"></label>
+    <span id="stepinfo"></span>
+  </div>
+  <div id="pname"></div>
+  <div id="warn"></div>
+</div>
+<div id="drop">Drop your .cls pattern file</div>
+<script type="importmap">{"imports":{"three":"./three.module.js","three/addons/":"./"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/GLTFLoader.js';
+
+// ---------- scene ----------
+const holder=document.getElementById('scene');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+holder.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0b0d10);
+scene.fog=new THREE.Fog(0x0b0d10,14,30);
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,100);
+camera.position.set(-6.4,2.9,-7.0);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,0.7,0); controls.enableDamping=true; controls.dampingFactor=0.08;
+controls.minDistance=2.6; controls.maxDistance=11; controls.maxPolarAngle=Math.PI*0.52;
+scene.add(new THREE.HemisphereLight(0xbdd0f0,0x2a2d33,2.1));
+const key=new THREE.DirectionalLight(0xffffff,2.8); key.position.set(4,7,-3); scene.add(key);
+const fill=new THREE.DirectionalLight(0xffffff,0.9); fill.position.set(-3,2,-6); scene.add(fill);
+const rim=new THREE.DirectionalLight(0x88aaff,1.3); rim.position.set(-5,4,5); scene.add(rim);
+const ground=new THREE.Mesh(new THREE.CircleGeometry(16,48),new THREE.MeshStandardMaterial({color:0x14171b,roughness:.95}));
+ground.rotation.x=-Math.PI/2; scene.add(ground);
+const grid=new THREE.PolarGridHelper(9,12,6,48,0x2a2f36,0x1e2329); grid.position.y=0.001; scene.add(grid);
+
+// ---------- car body (placeholder, swapped for real GLB when licensed model lands) ----------
+const car=new THREE.Group(); scene.add(car);
+const blackPaint=new THREE.MeshStandardMaterial({color:0x17181d,roughness:.32,metalness:.7});
+const blackGlass=new THREE.MeshStandardMaterial({color:0x05070a,roughness:.1,metalness:.9});
+const blackRim=new THREE.MeshStandardMaterial({color:0x101014,roughness:.5,metalness:.6});
+const tireMat=new THREE.MeshStandardMaterial({color:0x0c0c0e,roughness:.9});
+function box(w,h,d,x,y,z,mat){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);car.add(m);return m}
+box(1.9,0.62,4.9,0,0.62,0,blackPaint);                 // lower body
+box(1.86,0.5,3.3,0,0.93,-0.15,blackPaint);             // hood-to-tail upper belt
+box(1.7,0.62,2.5,0,1.35,0.35,blackGlass);              // glasshouse
+box(1.74,0.14,2.55,0,1.71,0.35,blackPaint);            // roof
+box(1.9,0.34,0.28,0,0.55,-2.42,blackPaint);            // front bumper
+box(1.9,0.34,0.28,0,0.55,2.42,blackPaint);             // rear bumper
+for(const sx of [-1,1]) for(const sz of [-1,1]){
+  const t=new THREE.Mesh(new THREE.CylinderGeometry(0.37,0.37,0.26,24),tireMat);
+  t.rotation.z=Math.PI/2; t.position.set(sx*0.86,0.37,sz*1.45); car.add(t);
+  const r=new THREE.Mesh(new THREE.CylinderGeometry(0.21,0.21,0.28,18),blackRim);
+  r.rotation.z=Math.PI/2; r.position.set(sx*0.86,0.37,sz*1.45); car.add(r);
+}
+new GLTFLoader().load('./model.glb',g=>{ // real CC-BY Durango
+  car.clear(); const m=g.scene;
+  // normalize: center + scale to 4.9 length, sit wheels on y=0
+  const bb=new THREE.Box3().setFromObject(m);
+  const sz=bb.getSize(new THREE.Vector3());
+  const scale=4.9/Math.max(sz.x,sz.z);
+  m.scale.setScalar(scale);
+  m.rotation.y=Math.PI; // model front is +z; app convention is front=-z
+  const bb2=new THREE.Box3().setFromObject(m);
+  const ctr=bb2.getCenter(new THREE.Vector3());
+  m.position.x-=ctr.x; m.position.z-=ctr.z; m.position.y-=bb2.min.y;
+  // blackout: darken every opaque material (paint, trim, rims), keep textures; leave transparent glass/lenses
+  m.traverse(o=>{if(o.isMesh){
+    const mats=Array.isArray(o.material)?o.material:[o.material];
+    for(const mt of mats){
+      if(!mt) continue;
+      if(mt.transparent){ mt.opacity=Math.min(mt.opacity,0.92); continue; }
+      mt.color=new THREE.Color(0x1c1e23);
+      mt.roughness=Math.min(mt.roughness??0.6,0.5);
+      mt.metalness=0.5;
+    }
+  }});
+  // ---- 2026 GT lamp restyle ----
+  m.traverse(o=>{if(o.isMesh){
+    if(o.name==='Object_55'){ // old round lamp internals: remove (replaced by 2026 lamp-face geometry)
+      o.visible=false;
+    }
+    if(o.name==='Object_78'){ // racetrack taillight bar: wire to rear daytime/brake/third
+      o.material=new THREE.MeshStandardMaterial({color:0x160b0c,roughness:0.3,metalness:0.5,emissive:new THREE.Color(0xff2a22),emissiveIntensity:0});
+      LINKS.push({mat:o.material,slots:[0x03,0x04,0x11,0x09,0x0A,0x12],on:2.0});
+    }
+    if(o.name==='Object_74'){ // factory DRL strips under the lamps: wire to DRL slots
+      o.material=new THREE.MeshStandardMaterial({color:0x14161a,roughness:0.25,metalness:0.7,emissive:new THREE.Color(0xf2f7ff),emissiveIntensity:0});
+      LINKS.push({mat:o.material,slots:[0x17,0x18],on:1.8});
+    }
+  }});
+  car.add(m);
+},undefined,()=>{}); // no model.glb: keep placeholder
+
+// ---------- light emitters ----------
+// slot -> {name, pos, color, size}  (front = -z)
+const E=[];
+const LINKS=[]; // model-material emissives driven by slots
+function emit(slot,name,x,y,z,color,size,back){
+  const g=new THREE.Group(); g.position.set(x,y,z);
+  const lens=new THREE.Mesh(new THREE.CircleGeometry(size*0.55,20),new THREE.MeshBasicMaterial({color:0x101114,transparent:true,opacity:0.15}));
+  const glow=new THREE.Mesh(new THREE.CircleGeometry(size*0.8,20),new THREE.MeshBasicMaterial({color:color,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+  if(!back){lens.rotation.y=Math.PI;glow.rotation.y=Math.PI;}
+  g.add(lens);g.add(glow);scene.add(g);
+  E.push({slot,name,glow,lens,color:new THREE.Color(color),on:false});
+}
+const AMBER=0xffa02e, RED=0xff2a22, WHITE=0xfff6e0, DRL=0xf2f7ff;
+emit(0x01,'LF park',-0.66,0.862,-2.345,WHITE,0.045);
+emit(0x02,'RF park', 0.66,0.862,-2.345,WHITE,0.045);
+emit(0x05,'LF side marker',-1.00,0.85,-2.10,AMBER,0.05);
+emit(0x06,'RF side marker', 1.00,0.85,-2.10,AMBER,0.05);
+emit(0x07,'LF signal',-0.50,0.862,-2.345,AMBER,0.05);
+emit(0x08,'RF signal', 0.50,0.862,-2.345,AMBER,0.05);
+emit(0x13,'LF low beam',-0.66,0.862,-2.345,WHITE,0.06);
+emit(0x14,'RF low beam', 0.66,0.862,-2.345,WHITE,0.06);
+emit(0x15,'LF high beam',-0.60,0.895,-2.345,WHITE,0.045);
+emit(0x16,'RF high beam', 0.60,0.895,-2.345,WHITE,0.045);
+emit(0x17,'LF DRL',-0.58,0.80,-2.345,DRL,0.045);
+emit(0x18,'RF DRL', 0.58,0.80,-2.345,DRL,0.045);
+emit(0x03,'LR daytime',-0.60,1.04,2.32,RED,0.075,1);
+emit(0x04,'CTR rear daytime',0,1.04,2.30,RED,0.075,1);
+emit(0x11,'RR daytime', 0.60,1.04,2.32,RED,0.075,1);
+emit(0x09,'LR brake',-0.45,1.04,2.32,RED,0.09,1);
+emit(0x0A,'RR brake', 0.45,1.04,2.32,RED,0.09,1);
+emit(0x12,'Third brake',0,1.48,2.28,RED,0.10,1);
+emit(0x0B,'LR reverse out',-0.62,0.88,2.30,WHITE,0.065,1);
+emit(0x0C,'RR reverse out', 0.62,0.88,2.30,WHITE,0.065,1);
+emit(0x0D,'LR reverse in',-0.28,0.88,2.28,WHITE,0.065,1);
+emit(0x0E,'RR reverse in', 0.28,0.88,2.28,WHITE,0.065,1);
+// ---------- 2026 GT lamp faces (added geometry) ----------
+function rrect(w,h,r){const s=new THREE.Shape();const x=-w/2,y=-h/2;
+  s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+h-r);s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s}
+function lampFace(sgn){ // sgn=-1 left, +1 right
+  const g=new THREE.Group();
+  const silver=new THREE.MeshStandardMaterial({color:0xc9ccd2,roughness:0.25,metalness:0.9});
+  const dark=new THREE.MeshStandardMaterial({color:0x0d0e11,roughness:0.35,metalness:0.5});
+  // projector capsule: chrome ring + dark lens (2026 squarish LED unit, outer side)
+  const ringShape=rrect(0.17,0.10,0.045); ringShape.holes.push(rrect(0.135,0.068,0.032));
+  const ring=new THREE.Mesh(new THREE.ExtrudeGeometry(ringShape,{depth:0.016,bevelEnabled:false}),silver);
+  const lensMat=new THREE.MeshStandardMaterial({color:0x0d0e11,roughness:0.15,metalness:0.6,emissive:new THREE.Color(0xfff6e0),emissiveIntensity:0});
+  const lensIn=new THREE.Mesh(new THREE.ShapeGeometry(rrect(0.135,0.068,0.032)),lensMat);
+  lensIn.position.z=0.017;
+  LINKS.push({mat:lensMat,slots:[sgn<0?0x01:0x02,sgn<0?0x13:0x14,sgn<0?0x15:0x16],on:2.2});
+  const proj=new THREE.Group(); proj.add(ring); proj.add(lensIn);
+  proj.position.set(sgn*0.66,0.862,-2.318); proj.rotation.y=Math.PI+sgn*-0.10;
+  g.add(proj);
+  // amber turn strip (inner side)
+  const amberMat=new THREE.MeshStandardMaterial({color:0x2a1a08,roughness:0.35,metalness:0.4,emissive:new THREE.Color(0xffa02e),emissiveIntensity:0});
+  const amber=new THREE.Mesh(new THREE.ExtrudeGeometry(rrect(0.105,0.052,0.02),{depth:0.014,bevelEnabled:false}),amberMat);
+  amber.position.set(sgn*0.50,0.862,-2.318); amber.rotation.y=Math.PI+sgn*-0.06;
+  g.add(amber);
+  LINKS.push({mat:amberMat,slots:[sgn<0?0x07:0x08],on:2.4});
+  // chrome brow over the lamp (2026 signature eyebrow)
+  const brow=new THREE.Mesh(new THREE.BoxGeometry(0.30,0.016,0.012),silver);
+  brow.position.set(sgn*0.575,0.928,-2.318); brow.rotation.z=sgn*0.05; brow.rotation.y=sgn*-0.10;
+  g.add(brow);
+  scene.add(g);
+}
+lampFace(-1); lampFace(1);
+
+// dead slots on 2026 GT (no fogs / clearance / cargo): 0x0F 0x10 0x1B 0x1C 0x1D -> no-op with warning
+const DEAD={0x0F:'LF fog (not on GT)',0x10:'RF fog (not on GT)',0x1B:'cargo (not on Durango)',0x1C:'unknown 3C',0x1D:'clearance (trucks only)'};
+
+// ---------- cls parsing & playback ----------
+let steps=[], playing=true, idx=0, acc=0, flashQueue=[];
+const speeds={slow:120,medium:70,fast:35,ludicrous:18};
+function slotOf(v){return v&0x1F}
+function cmdOf(v){return v&0xE0}
+function parseCls(text){
+  const lines=text.split(/\r?\n/).map(s=>s.trim().toUpperCase()).filter(s=>s.length>0);
+  const out=[],dead=new Set();
+  for(const ln of lines){
+    if(!/^[0-9A-F]{2}$/.test(ln)) continue;
+    const v=parseInt(ln,16), slot=slotOf(v), cmd=cmdOf(v);
+    if(v===0){out.push({type:'delay'});continue}
+    if(DEAD[slot]){dead.add(DEAD[slot]);continue}
+    const e=E.find(e=>e.slot===slot);
+    if(!e){dead.add('slot '+slot.toString(16).toUpperCase());continue}
+    if(cmd===0x20) out.push({type:'set',e,on:true});
+    else if(cmd===0x00) out.push({type:'set',e,on:false});
+    else if(cmd===0xA0) out.push({type:'flash',e,times:2});
+    else if(cmd===0xC0) out.push({type:'flash',e,times:3});
+  }
+  const w=document.getElementById('warn');
+  if(dead.size){w.textContent='Skipped (not on this Durango): '+[...dead].join(', ');w.style.display='block'}
+  else w.style.display='none';
+  return out;
+}
+function allOff(){for(const e of E){e.on=false}}
+function loadSteps(list,name){allOff();steps=list;idx=0;acc=0;flashQueue=[];document.getElementById('pname').textContent=name||''}
+function runStep(st){
+  if(st.type==='set'){st.e.on=st.on}
+  else if(st.type==='flash'){
+    // expand to blinks: on,off x times at current cadence
+    for(let i=0;i<st.times;i++){flashQueue.push({e:st.e,on:true},{e:st.e,on:false})}
+  }
+}
+function tick(dt){
+  if(!playing||!steps.length)return;
+  acc+=dt*1000;
+  const stepMs=Number(document.getElementById('speed').value);
+  while(acc>=stepMs){
+    acc-=stepMs;
+    if(flashQueue.length){const f=flashQueue.shift();f.e.on=f.on}
+    else{
+      runStep(steps[idx]);
+      document.getElementById('stepinfo').textContent=(idx+1)+' / '+steps.length;
+      idx=(idx+1)%steps.length;
+    }
+  }
+}
+function renderEmitters(){
+  for(const e of E){
+    e.glow.material.opacity=e.on?0.8:0;
+    e.lens.material.color=e.on?e.color:new THREE.Color(0x1a1c1f);
+  }
+  for(const l of LINKS){
+    l.mat.emissiveIntensity=l.slots.some(sl=>E.find(e=>e.slot===sl&&e.on))?l.on:0;
+  }
+}
+
+// demo pattern (wig-wag) so the page is alive before any upload
+loadSteps(parseCls('37 21 27 29 2D 00 17 01 07 09 0D 00 38 22 28 2A 2E 00 18 02 08 0A 0E 00'),'Demo: Intersection Wig-Wag - upload your .cls to replace');
+
+// ---------- ui ----------
+document.getElementById('play').onclick=e=>{playing=!playing;e.target.textContent=playing?'Pause':'Play'};
+function handleFile(f){
+  const r=new FileReader();
+  r.onload=()=>{loadSteps(parseCls(r.result),f.name.replace(/\.cls$/i,''));playing=true;document.getElementById('play').textContent='Pause'};
+  r.readAsText(f);
+}
+document.getElementById('file').onchange=ev=>{if(ev.target.files[0])handleFile(ev.target.files[0])};
+const drop=document.getElementById('drop');
+addEventListener('dragover',e=>{e.preventDefault();drop.style.display='flex'});
+addEventListener('dragleave',e=>{if(e.target===drop)drop.style.display='none'});
+addEventListener('drop',e=>{e.preventDefault();drop.style.display='none';if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+
+// ---------- loop ----------
+let last=performance.now();
+function loop(now){
+  const dt=(now-last)/1000; last=now;
+  tick(dt); renderEmitters(); controls.update();
+  renderer.render(scene,camera);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
