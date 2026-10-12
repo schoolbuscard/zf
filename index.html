@@ -338,7 +338,7 @@ const PATTERNS={
  'Full Send (unconfirmed)':'36 2F 21 29 2D 00 16 0F 01 09 0D 00 35 30 22 2A 2E 00 15 10 02 0A 0E 00 3B 00 1B 00'
 };
 const patSel=document.getElementById('pat');
-const VIEWS={'Rear Guard':[2.2,1.5,5.4],'Hi-Vis 360':[5.6,2.7,6.8],'Intersection Wig-Wag':[-1.8,1.5,-7.4]};
+const VIEWS={'Rear Guard':[0.9,1.5,5.8],'Hi-Vis 360':[3.4,2.2,7.2],'Intersection Wig-Wag':[-1.8,1.5,-7.4]};
 patSel.onchange=()=>{const n=patSel.value; if(PATTERNS[n]){loadSteps(parseCls(PATTERNS[n]),n); playing=true; document.getElementById('play').textContent='Pause';
   setView(n);}};
 function setView(n){const v=VIEWS[n]||[-6.4,2.9,-7.0]; const k=camera.aspect<1?Math.min(1.6,1/Math.pow(camera.aspect,0.85)):1; camera.position.set(v[0]*k,v[1]*(0.7+0.3*k),v[2]*k); controls.target.set(0,0.8,0); controls.update();}
