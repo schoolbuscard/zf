@@ -133,7 +133,9 @@ new GLTFLoader().load('./model.glb',g=>{ // real CC-BY Durango
     }
   }});
   car.add(m);
-},undefined,()=>{}); // no model.glb: keep placeholder
+  m.updateMatrixWorld(true);
+  buildRacetrack(m);
+},undefined,()=>{buildRacetrack(null);}); // no model.glb: keep placeholder
 
 // ---------- light emitters ----------
 // slot -> {name, pos, color, size}  (front = -z)
@@ -165,11 +167,11 @@ emit(0x04,'CTR rear daytime',0,0.98,2.40,RED,0.05,1);
 emit(0x11,'RR daytime', 0.70,0.98,2.345,RED,0.05,1);
 emit(0x09,'LR brake',-0.45,0.98,2.385,RED,0.06,1);
 emit(0x0A,'RR brake', 0.45,0.98,2.385,RED,0.06,1);
-emit(0x12,'Third brake',0,1.50,2.21,RED,0.06,1);
-emit(0x0B,'LR reverse out',-0.62,0.88,2.375,WHITE,0.055,1);
-emit(0x0C,'RR reverse out', 0.62,0.88,2.375,WHITE,0.055,1);
-emit(0x0D,'LR reverse in',-0.28,0.88,2.40,WHITE,0.055,1);
-emit(0x0E,'RR reverse in', 0.28,0.88,2.40,WHITE,0.055,1);
+emit(0x12,'Third brake',0,1.55,2.19,RED,0.035,1);
+emit(0x0B,'LR reverse out',-0.30,1.03,2.42,WHITE,0.03,1);
+emit(0x0C,'RR reverse out', 0.30,1.03,2.42,WHITE,0.03,1);
+emit(0x0D,'LR reverse in',-0.22,1.03,2.425,WHITE,0.03,1);
+emit(0x0E,'RR reverse in', 0.22,1.03,2.425,WHITE,0.03,1);
 // ---------- 2026 GT lamp faces (added geometry) ----------
 function rrect(w,h,r){const s=new THREE.Shape();const x=-w/2,y=-h/2;
   s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+h-r);s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s}
@@ -220,24 +222,51 @@ function rearZ(x,y){
   const a=RSURF[y0][x0]*(1-tx)+RSURF[y0][x1]*tx, b=RSURF[y1][x0]*(1-tx)+RSURF[y1][x1]*tx;
   return a*(1-ty)+b*ty;
 }
-(function(){
-  const shape=rrect(1.50,0.28,0.135);
-  const pts=shape.getPoints(220).map(p=>new THREE.Vector3(p.x,0.98+p.y,rearZ(p.x,0.98+p.y)+0.022));
+function buildRacetrack(model){
+  const ray=new THREE.Raycaster(); const rdir=new THREE.Vector3(0,0,-1);
+  // some model meshes are single-sided facing the cabin; flip to DoubleSide while probing so the true visible surface is found
+  const flipped=[];
+  if(model){ model.traverse(o=>{ if(o.isMesh){ const ms=Array.isArray(o.material)?o.material:[o.material]; for(const mt of ms){ if(mt){ flipped.push([mt,mt.side]); mt.side=THREE.DoubleSide; } } }}); }
+  function surfZ(x,y){
+    if(model){ ray.set(new THREE.Vector3(x,y,6),rdir); const h=ray.intersectObject(model,true); if(h.length) return h[0].point.z; }
+    return rearZ(x,y);
+  }
+  // smoothed surface z along the loop (guards against stray glass hits)
+  function loopPts(shape,off){
+    const raw=shape.getPoints(220);
+    let prev=null; const out=[];
+    for(const p of raw){
+      let z=surfZ(p.x,0.98+p.y);
+      if(prev!==null && Math.abs(z-prev)>0.06) z=prev;
+      prev=z; out.push(new THREE.Vector3(p.x,0.98+p.y,z+off));
+    }
+    return out;
+  }
+  const shape=rrect(1.62,0.22,0.10);
+  const pts=loopPts(shape,0.016);
   const curve=new THREE.CatmullRomCurve3(pts,true);
   const dayMat=new THREE.MeshStandardMaterial({color:0x20090a,roughness:0.25,metalness:0.4,emissive:new THREE.Color(0xff2a22),emissiveIntensity:0});
   scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve,260,0.0105,8,true),dayMat));
   LINKS.push({mat:dayMat,slots:[0x03,0x04,0x11],on:2.0});
-  const pts2=shape.getPoints(220).map(p=>new THREE.Vector3(p.x,0.98+p.y,rearZ(p.x,0.98+p.y)+0.027));
+  const pts2=loopPts(shape,0.021);
   const curve2=new THREE.CatmullRomCurve3(pts2,true);
   const brakeMat=new THREE.MeshStandardMaterial({color:0x20090a,roughness:0.25,metalness:0.4,emissive:new THREE.Color(0xff1a12),emissiveIntensity:0});
   scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve2,260,0.0105,8,true),brakeMat));
   LINKS.push({mat:brakeMat,slots:[0x09,0x0A,0x12],on:3.2});
   // high-mount third brake: thin strip at the top of the rear glass
   const tm=new THREE.MeshStandardMaterial({color:0x20090a,roughness:0.3,metalness:0.4,emissive:new THREE.Color(0xff1a12),emissiveIntensity:0});
-  const tstrip=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.024,0.014),tm);
-  tstrip.position.set(0,1.50,2.173); scene.add(tstrip);
+  const tstrip=new THREE.Mesh(new THREE.BoxGeometry(0.50,0.026,0.014),tm);
+  tstrip.position.set(0,1.55,2.135); tstrip.rotation.x=-0.18; scene.add(tstrip);
   LINKS.push({mat:tm,slots:[0x12],on:2.6});
-})();
+  // wide white reverse strips, one per side, like the real lamp
+  for(const sgn of [-1,1]){
+    const rm=new THREE.MeshStandardMaterial({color:0x111214,roughness:0.2,metalness:0.5,emissive:new THREE.Color(0xf2f7ff),emissiveIntensity:0});
+    const bar=new THREE.Mesh(new THREE.BoxGeometry(0.30,0.028,0.014),rm);
+    bar.position.set(sgn*0.30,1.03,surfZ(sgn*0.30,1.03)+0.02); scene.add(bar);
+    LINKS.push({mat:rm,slots:sgn<0?[0x0B,0x0D]:[0x0C,0x0E],on:2.4});
+  }
+  for(const [mt,sd] of flipped) mt.side=sd;
+}
 
 // dead slots on 2026 GT (no fogs / clearance / cargo): 0x0F 0x10 0x1B 0x1C 0x1D -> no-op with warning
 const DEAD={0x0F:'LF fog (not on GT)',0x10:'RF fog (not on GT)',0x1B:'cargo (not on Durango)',0x1C:'unknown 3C',0x1D:'clearance (trucks only)'};
@@ -248,7 +277,7 @@ const speeds={slow:120,medium:70,fast:35,ludicrous:18};
 function slotOf(v){return v&0x1F}
 function cmdOf(v){return v&0xE0}
 function parseCls(text){
-  const lines=text.split(/\r?\n/).map(s=>s.trim().toUpperCase()).filter(s=>s.length>0);
+  const lines=text.split(/\s+/).map(s=>s.trim().toUpperCase()).filter(s=>s.length>0);
   const out=[],dead=new Set();
   for(const ln of lines){
     if(!/^[0-9A-F]{2}$/.test(ln)) continue;
@@ -309,7 +338,9 @@ const PATTERNS={
  'Full Send (unconfirmed)':'36 2F 21 29 2D 00 16 0F 01 09 0D 00 35 30 22 2A 2E 00 15 10 02 0A 0E 00 3B 00 1B 00'
 };
 const patSel=document.getElementById('pat');
-patSel.onchange=()=>{const n=patSel.value; if(PATTERNS[n]){loadSteps(parseCls(PATTERNS[n]),n); playing=true; document.getElementById('play').textContent='Pause'}};
+const VIEWS={'Rear Guard':[5.6,2.7,6.8],'Hi-Vis 360':[5.6,2.7,6.8]};
+patSel.onchange=()=>{const n=patSel.value; if(PATTERNS[n]){loadSteps(parseCls(PATTERNS[n]),n); playing=true; document.getElementById('play').textContent='Pause';
+  const v=VIEWS[n]||[-6.4,2.9,-7.0]; camera.position.set(v[0],v[1],v[2]); controls.target.set(0,0.8,0); controls.update();}};
 loadSteps(parseCls(PATTERNS['Intersection Wig-Wag']),'Intersection Wig-Wag');
 
 // ---------- ui ----------
