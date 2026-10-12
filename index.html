@@ -28,6 +28,14 @@
 <div id="ui">
   <div class="row">
     <button id="play">Pause</button>
+    <select id="pat">
+      <option>Intersection Wig-Wag</option>
+      <option>Sweep</option>
+      <option>Hi-Vis 360</option>
+      <option>Rear Guard</option>
+      <option>Full Send (unconfirmed)</option>
+      <option value="__custom" hidden>Custom upload</option>
+    </select>
     <select id="speed">
       <option value="120">Slow</option>
       <option value="70">Medium</option>
@@ -152,16 +160,16 @@ emit(0x15,'LF high beam',-0.60,0.895,-2.345,WHITE,0.045);
 emit(0x16,'RF high beam', 0.60,0.895,-2.345,WHITE,0.045);
 emit(0x17,'LF DRL',-0.58,0.80,-2.345,DRL,0.045);
 emit(0x18,'RF DRL', 0.58,0.80,-2.345,DRL,0.045);
-emit(0x03,'LR daytime',-0.60,1.04,2.32,RED,0.075,1);
-emit(0x04,'CTR rear daytime',0,1.04,2.30,RED,0.075,1);
-emit(0x11,'RR daytime', 0.60,1.04,2.32,RED,0.075,1);
-emit(0x09,'LR brake',-0.45,1.04,2.32,RED,0.09,1);
-emit(0x0A,'RR brake', 0.45,1.04,2.32,RED,0.09,1);
-emit(0x12,'Third brake',0,1.48,2.28,RED,0.10,1);
-emit(0x0B,'LR reverse out',-0.62,0.88,2.30,WHITE,0.065,1);
-emit(0x0C,'RR reverse out', 0.62,0.88,2.30,WHITE,0.065,1);
-emit(0x0D,'LR reverse in',-0.28,0.88,2.28,WHITE,0.065,1);
-emit(0x0E,'RR reverse in', 0.28,0.88,2.28,WHITE,0.065,1);
+emit(0x03,'LR daytime',-0.70,0.98,2.345,RED,0.05,1);
+emit(0x04,'CTR rear daytime',0,0.98,2.40,RED,0.05,1);
+emit(0x11,'RR daytime', 0.70,0.98,2.345,RED,0.05,1);
+emit(0x09,'LR brake',-0.45,0.98,2.385,RED,0.06,1);
+emit(0x0A,'RR brake', 0.45,0.98,2.385,RED,0.06,1);
+emit(0x12,'Third brake',0,1.50,2.21,RED,0.06,1);
+emit(0x0B,'LR reverse out',-0.62,0.88,2.375,WHITE,0.055,1);
+emit(0x0C,'RR reverse out', 0.62,0.88,2.375,WHITE,0.055,1);
+emit(0x0D,'LR reverse in',-0.28,0.88,2.40,WHITE,0.055,1);
+emit(0x0E,'RR reverse in', 0.28,0.88,2.40,WHITE,0.055,1);
 // ---------- 2026 GT lamp faces (added geometry) ----------
 function rrect(w,h,r){const s=new THREE.Shape();const x=-w/2,y=-h/2;
   s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+h-r);s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s}
@@ -192,6 +200,44 @@ function lampFace(sgn){ // sgn=-1 left, +1 right
   scene.add(g);
 }
 lampFace(-1); lampFace(1);
+
+// ---- 2026 racetrack taillight: thin LED strip following the real liftgate surface ----
+const RSURF=[
+[1.62,1.96,2.18,2.26,2.30,2.30,2.31,2.32,2.34,2.35,2.35,2.36,2.37,2.37,2.38,2.38,2.38,2.37,2.37,2.36,2.35,2.35,2.34,2.32,2.31,2.30,2.30,2.26,2.18,1.96,1.62],
+[1.61,1.96,2.16,2.25,2.28,2.30,2.32,2.33,2.34,2.35,2.36,2.37,2.37,2.38,2.38,2.38,2.38,2.38,2.37,2.37,2.36,2.35,2.34,2.33,2.32,2.30,2.28,2.25,2.16,1.96,1.61],
+[1.56,1.95,2.17,2.25,2.29,2.30,2.32,2.33,2.34,2.35,2.36,2.37,2.38,2.38,2.38,2.38,2.38,2.38,2.38,2.37,2.36,2.35,2.34,2.33,2.32,2.30,2.29,2.25,2.17,1.95,1.56],
+[1.48,1.94,2.17,2.25,2.28,2.30,2.32,2.33,2.34,2.35,2.36,2.36,2.37,2.37,2.38,2.38,2.38,2.37,2.37,2.36,2.36,2.35,2.34,2.33,2.32,2.30,2.28,2.25,2.17,1.94,1.48],
+[1.33,1.92,2.17,2.25,2.29,2.31,2.32,2.34,2.34,2.33,2.34,2.35,2.35,2.37,2.37,2.37,2.37,2.37,2.35,2.35,2.34,2.33,2.34,2.34,2.32,2.31,2.29,2.25,2.17,1.92,1.33],
+[1.89,1.89,2.15,2.24,2.29,2.31,2.32,2.34,2.36,2.32,2.33,2.34,2.34,2.36,2.36,2.36,2.36,2.36,2.34,2.34,2.33,2.32,2.36,2.34,2.32,2.31,2.29,2.24,2.15,1.89,1.89],
+[1.84,1.84,2.13,2.24,2.29,2.31,2.33,2.34,2.36,2.38,2.32,2.33,2.34,2.35,2.35,2.35,2.35,2.35,2.34,2.33,2.32,2.38,2.36,2.34,2.33,2.31,2.29,2.24,2.13,1.84,1.84],
+[1.78,1.78,2.10,2.24,2.29,2.32,2.33,2.35,2.36,2.37,2.39,2.39,2.40,2.40,2.40,2.41,2.40,2.40,2.40,2.39,2.39,2.37,2.36,2.35,2.33,2.32,2.29,2.24,2.10,1.78,1.78],
+[1.67,2.23,2.09,2.23,2.29,2.32,2.33,2.35,2.36,2.37,2.38,2.39,2.39,2.40,2.40,2.40,2.40,2.40,2.39,2.39,2.38,2.37,2.36,2.35,2.33,2.32,2.29,2.23,2.09,2.23,1.67],
+[2.21,2.21,1.95,2.21,2.28,2.31,2.32,2.34,2.35,2.36,2.37,2.38,2.38,2.38,2.39,2.39,2.39,2.38,2.38,2.38,2.37,2.36,2.35,2.34,2.32,2.31,2.28,2.21,1.95,2.21,2.21]];
+function rearZ(x,y){
+  const fx=Math.min(Math.max((x+0.9)/0.06,0),30), fy=Math.min(Math.max((y-0.8)/0.04,0),9);
+  const x0=Math.floor(fx), y0=Math.floor(fy), x1=Math.min(x0+1,30), y1=Math.min(y0+1,9);
+  const tx=fx-x0, ty=fy-y0;
+  const a=RSURF[y0][x0]*(1-tx)+RSURF[y0][x1]*tx, b=RSURF[y1][x0]*(1-tx)+RSURF[y1][x1]*tx;
+  return a*(1-ty)+b*ty;
+}
+(function(){
+  const shape=rrect(1.50,0.28,0.135);
+  const pts=shape.getPoints(220).map(p=>new THREE.Vector3(p.x,0.98+p.y,rearZ(p.x,0.98+p.y)+0.022));
+  const curve=new THREE.CatmullRomCurve3(pts,true);
+  const dayMat=new THREE.MeshStandardMaterial({color:0x20090a,roughness:0.25,metalness:0.4,emissive:new THREE.Color(0xff2a22),emissiveIntensity:0});
+  scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve,260,0.0105,8,true),dayMat));
+  LINKS.push({mat:dayMat,slots:[0x03,0x04,0x11],on:2.0});
+  const pts2=shape.getPoints(220).map(p=>new THREE.Vector3(p.x,0.98+p.y,rearZ(p.x,0.98+p.y)+0.027));
+  const curve2=new THREE.CatmullRomCurve3(pts2,true);
+  const brakeMat=new THREE.MeshStandardMaterial({color:0x20090a,roughness:0.25,metalness:0.4,emissive:new THREE.Color(0xff1a12),emissiveIntensity:0});
+  scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve2,260,0.0105,8,true),brakeMat));
+  LINKS.push({mat:brakeMat,slots:[0x09,0x0A,0x12],on:3.2});
+  // high-mount third brake: thin strip at the top of the rear glass
+  const tm=new THREE.MeshStandardMaterial({color:0x20090a,roughness:0.3,metalness:0.4,emissive:new THREE.Color(0xff1a12),emissiveIntensity:0});
+  const tstrip=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.024,0.014),tm);
+  tstrip.position.set(0,1.50,2.173); scene.add(tstrip);
+  LINKS.push({mat:tm,slots:[0x12],on:2.6});
+})();
 
 // dead slots on 2026 GT (no fogs / clearance / cargo): 0x0F 0x10 0x1B 0x1C 0x1D -> no-op with warning
 const DEAD={0x0F:'LF fog (not on GT)',0x10:'RF fog (not on GT)',0x1B:'cargo (not on Durango)',0x1C:'unknown 3C',0x1D:'clearance (trucks only)'};
@@ -254,14 +300,23 @@ function renderEmitters(){
   }
 }
 
-// demo pattern (wig-wag) so the page is alive before any upload
-loadSteps(parseCls('37 21 27 29 2D 00 17 01 07 09 0D 00 38 22 28 2A 2E 00 18 02 08 0A 0E 00'),'Demo: Intersection Wig-Wag - upload your .cls to replace');
+// built-in patterns (the set made for this Durango) + upload override
+const PATTERNS={
+ 'Intersection Wig-Wag':'37 21 27 29 2D 00 17 01 07 09 0D 00 38 22 28 2A 2E 00 18 02 08 0A 0E 00',
+ 'Sweep':'27 00 07 37 00 17 21 00 01 22 00 02 38 00 18 28 00 08 00 2D 00 0D 29 00 09 32 00 12 2A 00 0A 2E 00 0E 00',
+ 'Hi-Vis 360':'37 17 37 17 37 17 38 18 38 18 38 18 00 29 09 29 09 29 09 2A 0A 2A 0A 2A 0A 00 23 24 31 32 12 32 12 03 04 11 00',
+ 'Rear Guard':'29 2A 32 00 09 0A 12 00 29 2A 32 00 09 0A 12 00 2B 2C 2D 2E 00 0B 0C 0D 0E 00 2B 2C 2D 2E 00 0B 0C 0D 0E 00',
+ 'Full Send (unconfirmed)':'36 2F 21 29 2D 00 16 0F 01 09 0D 00 35 30 22 2A 2E 00 15 10 02 0A 0E 00 3B 00 1B 00'
+};
+const patSel=document.getElementById('pat');
+patSel.onchange=()=>{const n=patSel.value; if(PATTERNS[n]){loadSteps(parseCls(PATTERNS[n]),n); playing=true; document.getElementById('play').textContent='Pause'}};
+loadSteps(parseCls(PATTERNS['Intersection Wig-Wag']),'Intersection Wig-Wag');
 
 // ---------- ui ----------
 document.getElementById('play').onclick=e=>{playing=!playing;e.target.textContent=playing?'Pause':'Play'};
 function handleFile(f){
   const r=new FileReader();
-  r.onload=()=>{loadSteps(parseCls(r.result),f.name.replace(/\.cls$/i,''));playing=true;document.getElementById('play').textContent='Pause'};
+  r.onload=()=>{loadSteps(parseCls(r.result),f.name.replace(/\.cls$/i,''));patSel.value='__custom';playing=true;document.getElementById('play').textContent='Pause'};
   r.readAsText(f);
 }
 document.getElementById('file').onchange=ev=>{if(ev.target.files[0])handleFile(ev.target.files[0])};
